@@ -16,26 +16,31 @@ const sharePricesDialogRef = ref(null)
 const sharePricesText = ref('')
 const sharePricesCopied = ref(false)
 
+const shareBuyPricesDialogRef = ref(null)
+const shareBuyPricesText = ref('')
+const shareBuyPricesCopied = ref(false)
+
 /** Gap between name (left) and price (right) in pasted text / monospace preview */
 const SHARE_PRICE_NAME_GAP = '          '
 
-function buildPricesShareHeader() {
+function buildPricesShareHeader(title) {
   const { jy, jm, jd } = todayJalali()
   const dateStr = formatJalaliPersian(jy, jm, jd)
   return `بنام خدا
 
-⚜️قیمت روز محصولات ⚜️
+⚜️${title} ⚜️
 🔻لیست مورخه
 ${dateStr}`
 }
 
-function buildPricesShareText() {
-  const header = buildPricesShareHeader()
+function buildPricesShareText(priceField) {
+  const title = priceField === 'buyPrice' ? 'قیمت خرید محصولات' : 'قیمت روز محصولات'
+  const header = buildPricesShareHeader(title)
   const lines = []
   for (const m of materials.value) {
     const lot = getLatestLot(m)
-    const sell = lot?.sellPrice ?? 0
-    lines.push(`${m.name}${SHARE_PRICE_NAME_GAP}${formatGrouped(sell)}`)
+    const price = lot?.[priceField] ?? 0
+    lines.push(`${m.name}${SHARE_PRICE_NAME_GAP}${formatGrouped(price)}`)
   }
   return `${header}\n\n${lines.join('\n')}`
 }
@@ -48,7 +53,7 @@ async function openSharePricesDialog() {
     backupVariant.value = 'error'
     return
   }
-  sharePricesText.value = buildPricesShareText()
+  sharePricesText.value = buildPricesShareText('sellPrice')
   sharePricesDialogRef.value?.showModal()
   try {
     await navigator.clipboard.writeText(sharePricesText.value)
@@ -64,6 +69,33 @@ async function copySharePricesAgain() {
     sharePricesCopied.value = true
   } catch {
     sharePricesCopied.value = false
+  }
+}
+
+async function openShareBuyPricesDialog() {
+  backupMessage.value = ''
+  shareBuyPricesCopied.value = false
+  if (!materials.value.length) {
+    backupMessage.value = 'لیست انبار خالی است؛ ابتدا از صفحهٔ انبار کالا اضافه کنید.'
+    backupVariant.value = 'error'
+    return
+  }
+  shareBuyPricesText.value = buildPricesShareText('buyPrice')
+  shareBuyPricesDialogRef.value?.showModal()
+  try {
+    await navigator.clipboard.writeText(shareBuyPricesText.value)
+    shareBuyPricesCopied.value = true
+  } catch {
+    shareBuyPricesCopied.value = false
+  }
+}
+
+async function copyShareBuyPricesAgain() {
+  try {
+    await navigator.clipboard.writeText(shareBuyPricesText.value)
+    shareBuyPricesCopied.value = true
+  } catch {
+    shareBuyPricesCopied.value = false
   }
 }
 
@@ -244,6 +276,17 @@ async function onImportBackupFile(e) {
             </svg>
             متن برای پیام‌رسان
           </button>
+          <button type="button" class="btn btn-outline btn-sm gap-1" title="نام کالا و قیمت خرید (آخرین خرید) برای چسباندن در پیام‌رسان" @click="openShareBuyPricesDialog">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+              />
+            </svg>
+            قیمت خرید
+          </button>
           <input
             ref="importInputRef"
             type="file"
@@ -290,6 +333,34 @@ async function onImportBackupFile(e) {
         ></textarea>
         <div class="modal-action flex-wrap gap-2">
           <button type="button" class="btn btn-outline btn-sm" @click="copySharePricesAgain">کپی دوباره</button>
+          <form method="dialog">
+            <button type="submit" class="btn btn-primary">بستن</button>
+          </form>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button type="submit" aria-label="بستن"> </button>
+      </form>
+    </dialog>
+
+    <dialog ref="shareBuyPricesDialogRef" id="share-buy-prices-modal" class="modal">
+      <div class="modal-box max-w-lg">
+        <h3 class="text-lg font-bold" dir="rtl">نام کالا و قیمت خرید</h3>
+        <p class="py-1 text-sm text-base-content/70" dir="rtl">
+          هر خط پایین‌تر: ابتدا نام کالا، سپس با فاصله، قیمت خرید هر عدد (همان «آخرین» در جدول انبار). بالای لیست، عنوان و تاریخ امروز (شمسی) می‌آید. بدون نوشتن «تومن».
+        </p>
+        <p v-if="shareBuyPricesCopied" class="text-sm text-success" dir="rtl">در حافظه کپی شد.</p>
+        <p v-else class="text-sm text-warning" dir="rtl">اگر کپی نشد، متن را انتخاب کنید یا دکمهٔ زیر را بزنید.</p>
+        <textarea
+          readonly
+          dir="ltr"
+          lang="fa"
+          rows="12"
+          class="textarea textarea-bordered mt-2 w-full font-mono text-sm leading-relaxed"
+          :value="shareBuyPricesText"
+        ></textarea>
+        <div class="modal-action flex-wrap gap-2">
+          <button type="button" class="btn btn-outline btn-sm" @click="copyShareBuyPricesAgain">کپی دوباره</button>
           <form method="dialog">
             <button type="submit" class="btn btn-primary">بستن</button>
           </form>
