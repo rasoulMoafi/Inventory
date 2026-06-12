@@ -13,8 +13,8 @@ export default defineNuxtConfig({
     plugins: [tailwindcss()],
   },
   app: {
-    // baseURL: '/Inventory/', // <-- IMPORTANT
-    baseURL: '/',
+    baseURL: '/Inventory/', // <-- IMPORTANT
+    //baseURL: '/',
 
     head: {
       title: 'انبار کالا',
