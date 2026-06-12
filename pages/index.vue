@@ -344,6 +344,10 @@ const totalSellValue = computed(() =>
 
 const materialCount = computed(() => materials.value.length)
 
+const materialOptions = computed(() =>
+  materials.value.map((m) => ({ value: m.id, label: m.name }))
+)
+
 const grandTotalUnits = computed(() =>
   materials.value.reduce((sum, m) => sum + totalUnits(m), 0)
 )
@@ -466,10 +470,12 @@ function onNameChange(id, raw) {
               <div class="label">
                 <span class="label-text font-medium">انتخاب کالا</span>
               </div>
-              <select v-model="form.existingMaterialId" class="select select-bordered w-full" required>
-                <option disabled value="">کالا را انتخاب کنید…</option>
-                <option v-for="m in materials" :key="m.id" :value="m.id">{{ m.name }}</option>
-              </select>
+              <SearchableSelect
+                v-model="form.existingMaterialId"
+                :options="materialOptions"
+                placeholder="کالا را انتخاب کنید…"
+                required
+              />
               <p v-if="!materials.length" class="label-text-alt text-warning">ابتدا یک کالای جدید اضافه کنید.</p>
             </div>
 
