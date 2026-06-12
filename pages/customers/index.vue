@@ -90,6 +90,18 @@ function materialsSelectableForRow(rowIdx) {
   )
 }
 
+function materialRowOptions(rowIdx) {
+  const items = materialsSelectableForRow(rowIdx).map((m) => ({
+    value: m.id,
+    label: `${m.name} (${remainingAfterDraft(m.id)})`,
+  }))
+  return [{ value: '', label: 'انتخاب…' }, ...items]
+}
+
+const customerOptions = computed(() =>
+  customers.value.map((c) => ({ value: c.id, label: c.name }))
+)
+
 function warehouseUnits(materialId) {
   const m = materials.value.find((x) => x.id === materialId)
   return m ? totalUnits(m) : 0
@@ -328,10 +340,12 @@ function submitFactor(e) {
               <div class="label pt-0">
                 <span class="label-text font-medium">مشتری</span>
               </div>
-              <select v-model="factorForm.customerId" class="select select-bordered w-full" required>
-                <option disabled value="">مشتری را انتخاب کنید…</option>
-                <option v-for="c in customers" :key="c.id" :value="c.id">{{ c.name }}</option>
-              </select>
+              <SearchableSelect
+                v-model="factorForm.customerId"
+                :options="customerOptions"
+                placeholder="مشتری را انتخاب کنید…"
+                required
+              />
               <p v-if="!customers.length" class="label-text-alt text-warning">ابتدا یک مشتری اضافه کنید.</p>
             </label>
 
@@ -363,7 +377,7 @@ function submitFactor(e) {
             </label>
           </div>
 
-          <div class="overflow-x-auto rounded-box border border-base-300">
+          <div class="min-h-120 overflow-x-auto overflow-y-auto rounded-box border border-base-300">
             <table class="table table-sm">
               <thead>
                 <tr>
@@ -377,12 +391,13 @@ function submitFactor(e) {
               <tbody>
                 <tr v-for="(line, idx) in factorLines" :key="idx">
                   <td>
-                    <select v-model="line.materialId" class="select select-bordered select-sm w-full min-w-[10rem]">
-                      <option value="">انتخاب…</option>
-                      <option v-for="m in materialsSelectableForRow(idx)" :key="m.id" :value="m.id">
-                        {{ m.name }} ({{ remainingAfterDraft(m.id) }})
-                      </option>
-                    </select>
+                    <SearchableSelect
+                      v-model="line.materialId"
+                      size="sm"
+                      class="min-w-[10rem]"
+                      :options="materialRowOptions(idx)"
+                      placeholder="انتخاب…"
+                    />
                   </td>
                   <td class="text-end">
                     <input
