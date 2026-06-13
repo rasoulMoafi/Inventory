@@ -37,6 +37,7 @@ const open = ref(false)
 const query = ref('')
 const rootRef = ref(null)
 const searchRef = ref(null)
+let removeOutsideListener = null
 
 const selectedLabel = computed(() => {
   const opt = props.options.find((o) => o.value === props.modelValue)
@@ -44,34 +45,57 @@ const selectedLabel = computed(() => {
 })
 
 const filteredOptions = computed(() => {
-  const q = query.value.trim().toLowerCase()
+  const q = query.value.trim()
   if (!q) return props.options
-  return props.options.filter((o) => String(o.label).toLowerCase().includes(q))
+  return props.options.filter((o) => searchTextIncludes(o.label, q))
 })
 
-function onClickOutside(e) {
-  if (rootRef.value && !rootRef.value.contains(e.target)) {
-    open.value = false
+function detachOutsideListener() {
+  removeOutsideListener?.()
+  removeOutsideListener = null
+}
+
+function attachOutsideListener() {
+  detachOutsideListener()
+  const handler = (e) => {
+    if (rootRef.value && !rootRef.value.contains(e.target)) {
+      open.value = false
+    }
+  }
+  document.addEventListener('pointerdown', handler, true)
+  removeOutsideListener = () => document.removeEventListener('pointerdown', handler, true)
+}
+
+function focusSearchInput() {
+  const input = searchRef.value
+  if (!input) return
+  try {
+    input.focus({ preventScroll: true })
+  } catch {
+    input.focus()
   }
 }
 
 watch(open, (isOpen) => {
   if (isOpen) {
     nextTick(() => {
-      document.addEventListener('click', onClickOutside)
-      searchRef.value?.focus()
+      window.setTimeout(() => {
+        attachOutsideListener()
+        focusSearchInput()
+      }, 0)
     })
   } else {
-    document.removeEventListener('click', onClickOutside)
+    detachOutsideListener()
     query.value = ''
   }
 })
 
 onUnmounted(() => {
-  document.removeEventListener('click', onClickOutside)
+  detachOutsideListener()
 })
 
 function toggle(e) {
+  e.preventDefault()
   e.stopPropagation()
   if (props.disabled) return
   open.value = !open.value
@@ -124,11 +148,19 @@ function selectOption(opt) {
         <input
           ref="searchRef"
           v-model="query"
-          type="text"
+          type="search"
+          dir="rtl"
+          lang="fa"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+          enterkeyhint="search"
           class="input input-bordered w-full"
           :class="{ 'input-sm': size === 'sm' }"
           :placeholder="searchPlaceholder"
+          @pointerdown.stop
           @click.stop
+          @keydown.stop
         />
       </div>
       <ul class="max-h-60 overflow-y-auto py-1">
